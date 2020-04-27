@@ -1,0 +1,13 @@
+*.pyc
+__cache__/
+api.txt
+*driver
+venv/
+**/.DS_Store
+**/test.*
+**/tmp.*
+test/
+**/*.mp[34]
+**/*.flac
+**/*.avi
+**/*.wav
