@@ -221,11 +221,13 @@ def main(noun: str, action: str, bgm: str):
                         '-i',
                         "../../" + bgm,
                         "-filter_complex",
-                        "[0]volume=1[a0];[1]volume=0.3[a1];[a0][a1]amix=inputs=2[a]",
+                        "[0]volume=1[a0];[1]volume=0.325[a1];[a0][a1]amix=inputs=2[a]",
                         "-map",
                         "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-b:a", "192k", "-ac", "2", "-shortest",
                         '-r',
                         '20',
+                        '-s',
+                        '1920x1080',
                         '-max_muxing_queue_size',
                         '9999',
                         'test2.mp4'],
@@ -234,15 +236,16 @@ def main(noun: str, action: str, bgm: str):
         subprocess.run(['ffmpeg',
                         '-i',
                         'test.mp4',
-                        '-vf',
-                        'subtitles=subtitle.srt',
                         '-r',
                         '20',
+                        '-s',
+                        '1920x1080',
                         '-max_muxing_queue_size',
                         '9999',
                         'test2.mp4'],
                        check=True)
-    subprocess.run(['ffmpeg', '-i', 'test2.mp4', '-vf','subtitles=subtitle.srt', '-max_muxing_queue_size', '9999', 'out.mp4'], check=True)
+    subprocess.run(['ffmpeg', '-i', 'test2.mp4', '-vf', 'subtitles=subtitle.srt,scale=1920x1080',
+                    '-s', '1920x1080', '-max_muxing_queue_size', '9999', 'out.mp4'], check=True)
     os.rename("out.mp4", "../../out.mp4")
 
 
