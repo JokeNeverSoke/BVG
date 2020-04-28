@@ -43,10 +43,10 @@ def get_length(path: str) -> int:
     return totaltime
 
 
-def get_images(keyword: str, amount: int = 10) -> List[str]:
+def get_images(keywords: Tuple[str], amount: int = 10) -> List[str]:
     """Get images using `keyword` from Bing and return a list of paths"""
     url = "http://image.baidu.com/search/index?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&word={}".format(
-        keyword)
+        keywords[0])
     click.echo("Starting webdriver to get image urls")
     chrome_options = Options()
     chrome_options.add_argument("--disable-extensions")
@@ -59,8 +59,20 @@ def get_images(keyword: str, amount: int = 10) -> List[str]:
     counter = 0
     while len(image_files) < amount:
         click.echo("{} images left".format(amount - len(image_files)))
-        element: webdriver.remote.webelement.WebElement = imagelinks.pop()
-        link = element.get_attribute('data-objurl')
+        try:
+            element: webdriver.remote.webelement.WebElement = imagelinks.pop()
+        except IndexError:
+            click.echo("Current images not enough, switching to fallback verb")
+            url = "http://image.baidu.com/search/index?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&word={}".format(
+                keywords[1])
+            driver.get(url)
+            imagelinks = driver.find_elements_by_css_selector('.imgitem')
+            continue
+        try:
+            link = element.get_attribute('data-objurl')
+        except:
+            click.echo("FAILED Cannot get attribute data-objurl")
+            continue
         # link = attr_m['murl']
         click.echo("Downloading image from url {}".format(link))
         filename = link.split("/")[-1].split("?")[0]
@@ -69,13 +81,19 @@ def get_images(keyword: str, amount: int = 10) -> List[str]:
             continue
         extension = "." + filename.split('.')[-1]
         file_name = "images/" + str(counter) + extension
-        with open(str(file_name), 'wb') as file:
-            try:
-                stuff = requests.get(link, timeout=2).content
-            except requests.ConnectTimeout:
-                click.echo("FAILED TIMEOUT")
-                continue
-            else:
+        try:
+            stuff = requests.get(link, timeout=2).content
+        except requests.exceptions.ConnectionError:
+            click.echo("FAILED TIMEOUT")
+            continue
+        except requests.exceptions.ReadTimeout:
+            click.echo("FAILED TIMEOUT")
+            continue
+        except Exception as e:
+            click.echo("Error when downloading image: {}".format(e))
+            continue
+        else:
+            with open(str(file_name), 'wb') as file:
                 file.write(stuff)
         image_files.append(file_name)
         click.echo("SUCCESS")
@@ -132,7 +150,8 @@ def return_srt_caption(sentences: List[Tuple[str, float]],
 @click.command()
 @click.argument("noun")
 @click.argument("action")
-def main(noun: str, action: str):
+@click.option("--bgm", default=None, help="BGM used for the video")
+def main(noun: str, action: str, bgm: str):
     if "__cache__" not in os.listdir():  # change dir stuff to cache
         os.mkdir("__cache__")
     os.chdir("__cache__")
@@ -144,6 +163,7 @@ def main(noun: str, action: str):
     os.mkdir('voices')
     click.echo("Directories `images` and `voices` created")
 
+    click.echo("BGM: {}".format(bgm))
     # get formated sentences
     article: str = return_article(noun, action)
     # split into smaller for subtitles
@@ -162,7 +182,7 @@ def main(noun: str, action: str):
         filestream.write(return_srt_caption(
             [(part[2], part[1]) for part in audios]))
     # download and get the image locations
-    image_files = get_images(noun, len(sentences))
+    image_files = get_images((noun, action), len(sentences))
 
     # calculate total time
     totaltime = 0.0
@@ -191,20 +211,38 @@ def main(noun: str, action: str):
         os.system(
             "ffmpeg -i {} new/{}.png".format(image_files[counter], counter))
     click.echo("Generating low-rate video")
-    os.system(r"ffmpeg -framerate 1/{} -i new/%d.png -i output.aiff -s 1920x1080 -vcodec libx264 -pix_fmt yuv420p test1.mp4".format(totaltime // 10 + 1))
+    os.system(r"ffmpeg -framerate 1/{} -i new/%d.png -i output.aiff -vcodec libx264 -s 1920x1080 -pix_fmt yuv420p test1.mp4".format(totaltime // 10 + 1))
     # os.system(r"ffmpeg -framerate 1/5 -i new/*.png -r 30 test.mp4")
     os.system(r"ffmpeg -i test1.mp4 -r 20 -max_muxing_queue_size 9999 test.mp4")
-    subprocess.run(['ffmpeg',
-                    '-i',
-                    'test.mp4',
-                    '-vf',
-                    'subtitles=subtitle.srt',
-                    '-r',
-                    '20',
-                    '-max_muxing_queue_size',
-                    '9999',
-                    'out.mp4'],
-                   check=True)
+    if bgm is not None:
+        subprocess.run(['ffmpeg',
+                        '-i',
+                        'test.mp4',
+                        '-i',
+                        "../../" + bgm,
+                        "-filter_complex",
+                        "[0]volume=1[a0];[1]volume=0.3[a1];[a0][a1]amix=inputs=2[a]",
+                        "-map",
+                        "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-b:a", "192k", "-ac", "2", "-shortest",
+                        '-r',
+                        '20',
+                        '-max_muxing_queue_size',
+                        '9999',
+                        'test2.mp4'],
+                       check=True)
+    else:
+        subprocess.run(['ffmpeg',
+                        '-i',
+                        'test.mp4',
+                        '-vf',
+                        'subtitles=subtitle.srt',
+                        '-r',
+                        '20',
+                        '-max_muxing_queue_size',
+                        '9999',
+                        'test2.mp4'],
+                       check=True)
+    subprocess.run(['ffmpeg', '-i', 'test2.mp4', '-vf','subtitles=subtitle.srt', '-max_muxing_queue_size', '9999', 'out.mp4'], check=True)
     os.rename("out.mp4", "../../out.mp4")
 
 
