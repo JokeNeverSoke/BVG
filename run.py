@@ -1,16 +1,16 @@
 #!/usr/bin/env python
+"""
+A cli to create bad videos from a noun and a verb
+"""
 
-import json
 import os
 import random
 import re
 import subprocess
-import time
 from typing import List, Tuple
 
 import click
 import requests
-from bs4 import BeautifulSoup as bs
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -45,7 +45,8 @@ def get_length(path: str) -> int:
 
 def get_images(keyword: str, amount: int = 10) -> List[str]:
     """Get images using `keyword` from Bing and return a list of paths"""
-    url = "http://image.baidu.com/search/index?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&word={}".format(keyword)
+    url = "http://image.baidu.com/search/index?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&word={}".format(
+        keyword)
     click.echo("Starting webdriver to get image urls")
     chrome_options = Options()
     chrome_options.add_argument("--disable-extensions")
@@ -68,12 +69,14 @@ def get_images(keyword: str, amount: int = 10) -> List[str]:
             continue
         extension = "." + filename.split('.')[-1]
         file_name = "images/" + str(counter) + extension
-        with open(str(file_name), 'wb') as f:
+        with open(str(file_name), 'wb') as file:
             try:
-                f.write(requests.get(link, timeout=2).content)
-            except:
+                stuff = requests.get(link, timeout=2).content
+            except requests.ConnectTimeout:
                 click.echo("FAILED TIMEOUT")
                 continue
+            else:
+                file.write(stuff)
         image_files.append(file_name)
         click.echo("SUCCESS")
         counter += 1
@@ -155,8 +158,9 @@ def main(noun: str, action: str):
 
     # generate .srt subtitle file
     srt_filename = "subtitle.srt"
-    with open(srt_filename, 'w') as f:
-        f.write(return_srt_caption([(part[2], part[1]) for part in audios]))
+    with open(srt_filename, 'w') as filestream:
+        filestream.write(return_srt_caption(
+            [(part[2], part[1]) for part in audios]))
     # download and get the image locations
     image_files = get_images(noun, len(sentences))
 
@@ -167,9 +171,9 @@ def main(noun: str, action: str):
     click.echo("Video length: {}".format(totaltime))
 
     # create a file for joining audio
-    with open('audiopath.txt', 'w') as f:
+    with open('audiopath.txt', 'w') as filestream:
         for file, _, _ in audios:
-            f.write("file '{}'\n".format(file))
+            filestream.write("file '{}'\n".format(file))
 
     # merge the autio files
     click.echo("Merging autio files")
@@ -190,9 +194,17 @@ def main(noun: str, action: str):
     os.system(r"ffmpeg -framerate 1/{} -i new/%d.png -i output.aiff -s 1920x1080 -vcodec libx264 -pix_fmt yuv420p test1.mp4".format(totaltime // 10 + 1))
     # os.system(r"ffmpeg -framerate 1/5 -i new/*.png -r 30 test.mp4")
     os.system(r"ffmpeg -i test1.mp4 -r 20 -max_muxing_queue_size 9999 test.mp4")
-    subprocess.run([
-        'ffmpeg', '-i', 'test.mp4', '-vf', 'subtitles=subtitle.srt', '-r', '20', '-max_muxing_queue_size', '9999', 'out.mp4'
-    ], check=True)
+    subprocess.run(['ffmpeg',
+                    '-i',
+                    'test.mp4',
+                    '-vf',
+                    'subtitles=subtitle.srt',
+                    '-r',
+                    '20',
+                    '-max_muxing_queue_size',
+                    '9999',
+                    'out.mp4'],
+                   check=True)
     os.rename("out.mp4", "../../out.mp4")
 
 
