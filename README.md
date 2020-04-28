@@ -5,6 +5,7 @@
 
 ## 安装
 **建议使用venv**
+
 安装`requirements.txt`，此外还需要安装`ffmpeg`工具
 
 ## 运行
