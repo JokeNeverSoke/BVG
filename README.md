@@ -10,7 +10,9 @@
 
 **建议使用venv**
 
-安装`requirements.txt`，此外还需要安装`ffmpeg`工具
+安装`requirements.txt`，此外还需要安装`ffmpeg`和`say`工具
+
+~~以此目前只能在mac上跑，未来会增加跨平台tts~~ 
 
 ## 运行
 
