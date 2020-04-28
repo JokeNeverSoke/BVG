@@ -244,7 +244,7 @@ def main(noun: str, action: str, bgm: str):
                         '9999',
                         'test2.mp4'],
                        check=True)
-    subprocess.run(['ffmpeg', '-i', 'test2.mp4', '-vf', 'subtitles=subtitle.srt,scale=1920x1080',
+    subprocess.run(['ffmpeg', '-i', 'test2.mp4', '-vf', 'subtitles=subtitle.srt,scale=1920x1080,setdar=16/9',
                     '-s', '1920x1080', '-max_muxing_queue_size', '9999', 'out.mp4'], check=True)
     os.rename("out.mp4", "../../out.mp4")
 
