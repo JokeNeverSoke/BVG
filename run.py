@@ -223,7 +223,8 @@ def main(noun: str, action: str, bgm: str):
                         "-filter_complex",
                         "[0]volume=1[a0];[1]volume=0.325[a1];[a0][a1]amix=inputs=2[a]",
                         "-map",
-                        "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-b:a", "192k", "-ac", "2", "-shortest",
+                        "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-b:a", "192k", "-ac", "2", "-t", str(
+                            totaltime),
                         '-r',
                         '20',
                         '-s',
